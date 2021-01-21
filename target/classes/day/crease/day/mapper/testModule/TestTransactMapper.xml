@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="day.crease.day.mapper.testModule.TestTransactMapper">
+
+    <delete id="removeOne" parameterType="string">
+        delete from d_sending_detail where id = #{jobNum}
+    </delete>
+
+    <select id="oneUser" resultType="day.crease.day.bean.User">
+        select * from test_yy where id = 1
+    </select>
+
+    <update id="updateAge" parameterType="day.crease.day.bean.User">
+        update test_yy set age = #{age} where id = 1
+    </update>
+
+
+
+</mapper>
