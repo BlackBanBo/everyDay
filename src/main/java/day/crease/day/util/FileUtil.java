@@ -5,9 +5,11 @@ import com.jcraft.jsch.*;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.tools.zip.ZipEntry;
+import org.apache.tools.zip.ZipFile;
 
 import java.io.*;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * 文件的基本操作：上传、下载
@@ -29,6 +31,9 @@ public class FileUtil {
     private String password;
     //连接密钥
     private String privateKey;
+
+    public FileUtil() {
+    }
 
     /**
      * 创建构造器：基于密码认证sftp对象
@@ -351,5 +356,99 @@ public class FileUtil {
             return false;
         }
         return true;
+    }
+
+    /**
+     * 解压文件到指定目录
+     *
+     * @param zipFile    压缩文件的绝对路径
+     * @param targetPath 解压到哪个目录下
+     * @throws IOException
+     */
+    public static void unZipFile(File zipFile, String targetPath) throws IOException {
+        // 判断传入的解压路径是否存在，不存在则创建
+        File file = new File(targetPath);
+        if (!file.exists()) {
+            file.mkdirs();
+        }
+        /**
+         * ZipFile类用于从.zip文件中读取条目
+         *
+         */
+        ZipFile zip = new ZipFile(zipFile);
+        for (Enumeration entries = zip.getEntries(); entries.hasMoreElements(); ) {
+            ZipEntry entry = (ZipEntry) entries.nextElement();
+            // 解决Linux乱码问题
+            entry.setUnixMode(644);
+            String zipName = entry.getName();
+            InputStream inputStream = zip.getInputStream(entry);
+            BufferedInputStream bis = new BufferedInputStream(inputStream);
+            // 解压后的文件路径
+//            String outPath = (targetPath + zipName).replaceAll("\\*", "/");
+            String outPath = targetPath.replaceAll("\\\\","/")+"/"+zipName;
+            System.out.println("输出路径："+outPath);
+            // 判断路径是否存在，不存在则创建输出路径
+            File outFile = new File(outPath.substring(0, outPath.lastIndexOf("/")));
+            if (!outFile.exists()) {
+                outFile.mkdirs();
+            }
+            // 判断文件全路径是否为文件夹，是则不需要解压
+            if (new File(outPath).isDirectory()) {
+                continue;
+            }
+            OutputStream out = new FileOutputStream(outPath);
+            byte[] bytes = new byte[1024];
+            int len;
+            while ((len = inputStream.read(bytes)) > 0){
+                out.write(bytes,0,len);
+            }
+            inputStream.close();
+            out.close();
+        }
+        System.out.println("**************解压完毕********************");
+    }
+
+    /**
+     * 判断指定文件是否存在
+     *
+     * @param directory
+     * @param zipFile
+     * @return
+     */
+    public List<Map<String, String>> fileIsExist(String directory, String zipFile) {
+        // 登录服务器
+//        connect();
+        File zipFilePath = new File(zipFile);
+        List<Map<String, String>> list = new ArrayList<>();
+        if (zipFilePath.exists()) {
+            // 判断.conf 和.keytab文件是否存在
+            File file = new File(directory);
+            // 解压压缩文件
+            try {
+                unZipFile(zipFilePath, directory);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            // 取出当前目录下的所有文件
+            File fileList[] = file.listFiles();
+            for (File f : fileList) {
+                String fileName = f.getName();
+                if (fileName.endsWith("conf")) {
+                    Map<String, String> map1 = new HashMap<>();
+                    map1.put("conf", f.getAbsolutePath());
+                    list.add(map1);
+                    logger.info("Existence of conf file : " + f.getAbsolutePath());
+                }
+                if (fileName.endsWith("keytab")) {
+                    Map<String, String> map2 = new HashMap<>();
+                    map2.put("keytab", f.getAbsolutePath());
+                    list.add(map2);
+                    logger.info("Existence of conf file : " + f.getAbsolutePath());
+                }
+            }
+        } else {
+            throw new RuntimeException(zipFile + "文件不存在");
+        }
+        return list;
     }
 }
